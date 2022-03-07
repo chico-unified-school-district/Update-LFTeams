@@ -1,0 +1,30 @@
+-- jcooper user_id is 45 and jcooper Created_by_snapshot_id 49.
+-- We need to turn identity_insert to on,
+-- and then off again when the operation is complete
+
+SET IDENTITY_INSERT teams ON;
+
+ INSERT INTO teams
+ (
+  id
+ ,name
+ ,description
+ ,date_created
+ ,is_deleted
+ ,created_by_snapshot_id
+ ,settings
+ ,tenant_id
+ )
+ VALUES
+ (
+ ((SELECT MAX(id) FROM teams) + 1)
+ ,'{0}'
+ ,'{0}'
+ ,CURRENT_TIMESTAMP
+ ,0
+ ,49
+ ,0
+ ,0
+ )
+
+ SET IDENTITY_INSERT teams OFF;

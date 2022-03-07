@@ -1,0 +1,28 @@
+-- jcooper user_id is 45 and jcooper Created_by_snapshot_id 49.
+-- We need to turn identity_insert to on,
+-- and then off again when the operation is complete
+
+SET IDENTITY_INSERT team_members ON;
+
+INSERT INTO team_members
+(
+  user_id
+ ,team_id
+ ,member_rights
+ ,admin_rights
+ ,join_date
+ ,id
+ ,updated_by_snapshotid
+)
+VALUES
+(
+ {0}
+ ,{1}
+ ,1
+ ,0
+ ,CURRENT_TIMESTAMP
+ ,((SELECT MAX(id) FROM team_members) + 1)
+ ,49
+)
+
+SET IDENTITY_INSERT team_members OFF;
