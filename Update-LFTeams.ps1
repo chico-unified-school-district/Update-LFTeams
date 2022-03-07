@@ -93,7 +93,8 @@ function Add-TeamMember {
     Write-Warning ('{0},{1},{2},Team [{3}] or user [{4}] not found' -f $msgVars)
    }
    else {
-    Write-Host ('{0},{1},{2}' -f $MyInvocation.MyCommand.name, $user.displayname, $team.name) -Fore DarkMagenta
+    $msgVars = $MyInvocation.MyCommand.name, $user.user_id, $user.username, $user.email, $user.displayname, $team.name
+    Write-Host ('{0},{1},{2},{3},{4},{5}' -f $msgVars) -Fore DarkMagenta
     $sql = $insertTeamMemberTemplate -f $user.user_id, $team.id
     # if ($LaserficheFormsDatabase -match 'SANDBOX') { $sql = $sql.replace('SET', '--SET') }
     Write-Verbose ('{0}, sql: {1}' -f $MyInvocation.MyCommand.name, $sql)
