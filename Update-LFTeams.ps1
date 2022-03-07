@@ -89,7 +89,7 @@ function Add-TeamMember {
   $user = $_.EmailWork | Get-LFUser
   if (-not($check)) {
    if ( -not($user) -or -not($team) ) {
-    $msgVars = $MyInvocation.MyCommand.name, $_.SiteDescr, $_.EmailWork, $team.name, $user.EmailWork
+    $msgVars = $MyInvocation.MyCommand.name, $_.SiteDescr, $_.EmailWork, $team.name, $user.email
     Write-Warning ('{0},{1},{2},Team [{3}] or user [{4}] not found' -f $msgVars)
    }
    else {
@@ -171,7 +171,7 @@ function Get-TeamRole {
   $team = $_.SiteDescr | Get-Team
   $user = $_.EmailWork | Get-LFUser
   if ((-not($team)) -or (-not($user))) {
-   $msgVars = $MyInvocation.MyCommand.name, $_.SiteDescr, $_.EmailWork, $team.name, $user.EmailWork
+   $msgVars = $MyInvocation.MyCommand.name, $_.SiteDescr, $_.EmailWork, $team.name, $user.email
    Write-Warning ('{0},{1},{2},team [{3}] or user [{4}] not found' -f $msgVars)
   }
   else {
@@ -202,7 +202,7 @@ function Get-TeamMember {
   $team = $_.SiteDescr | Get-Team
   $user = $_.EmailWork | Get-LFUser
   if ((-not($team)) -or (-not($user))) {
-   $msgVars = $MyInvocation.MyCommand.name, $_.SiteDescr, $_.EmailWork, $team.name, $user.EmailWork
+   $msgVars = $MyInvocation.MyCommand.name, $_.SiteDescr, $_.EmailWork, $team.name, $user.email
    Write-Warning ('{0},{1},{2},Team [{3}] or user [{4}] not found' -f $msgVars)
   }
   else {
