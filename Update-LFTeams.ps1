@@ -18,7 +18,7 @@ and adds Teams, Team Members, Roles, etc t the Laserfiche Forms Database
 param (
  # Escape Employee Server
  [Parameter(Mandatory = $true)]
- [ValidateScript( { Test-Connection -ComputerName $_ -Quiet -Count 1 })]
+ # [ValidateScript( { Test-Connection -ComputerName $_ -Quiet -Count 1 })]
  [string]$EscapeServer,
  [Parameter(Mandatory = $true)]
  [string]$EscapeDatabase,
