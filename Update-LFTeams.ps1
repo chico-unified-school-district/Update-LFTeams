@@ -239,9 +239,10 @@ function Invoke-LFSql ($sql) {
 'SqlServer' | Load-Module
 
 $lfFormsDBParams = @{
- Server     = $LaserficheFormsInstance
- Database   = $LaserficheFormsDatabase
- Credential = $LaserficheDBCredential
+ Server                 = $LaserficheFormsInstance
+ Database               = $LaserficheFormsDatabase
+ Credential             = $LaserficheDBCredential
+ TrustServerCertificate = $true
 }
 
 # Escape JobClasses is where all the magic happens. Every Laserfiche Team and Role update stems from these classes.
