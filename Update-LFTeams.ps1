@@ -40,6 +40,7 @@ param (
  [Alias('wi')]
 	[switch]$WhatIf
 )
+
 function Add-Role {
  begin {
   $insertRoleTemplate = Get-Content -Path .\sql\insert-role.txt -Raw
@@ -61,6 +62,7 @@ function Add-Role {
   }
  }
 }
+
 function Add-Team {
  begin {
   $insertTeamTemplate = Get-Content -Path .\sql\insert-team.txt -Raw
@@ -68,8 +70,33 @@ function Add-Team {
  process {
   # if the input is null then create a team matching the input
   $check = $_ | Get-Team
-  if ($null -eq $check) {
-   $sql = $insertTeamTemplate -f $_
+  if ($check) { return }
+  $sql = $insertTeamTemplate -f $_
+  # if ($LaserficheFormsDatabase -match 'SANDBOX') { $sql = $sql.replace('SET', '--SET') }
+  Write-Host ('{0},[{1}]' -f $MyInvocation.MyCommand.name, $_) -F Cyan
+  Write-Verbose ('{0}, sql: {1}' -f $MyInvocation.MyCommand.name, $sql)
+  if ($WhatIf) { return }
+  Invoke-Sqlcmd @lfFormsDBParams -Query $sql
+ }
+}
+
+function Add-TeamMember {
+ begin {
+  $insertTeamMemberTemplate = Get-Content -Path .\sql\insert-team_member.txt -Raw
+ }
+ process {
+  $check = $_ | Get-TeamMember
+  $team = $_.SiteDescr | Get-Team
+  $user = $_.EmailWork | Get-LFUser
+  if ($check) { return }
+  if ( -not($user) -or -not($team) ) {
+   $msgVars = $MyInvocation.MyCommand.name, $_.SiteDescr, $_.EmailWork, $team.name, $user.email
+   Write-Warning ('{0},{1},{2},Team [{3}] or user [{4}] not found' -f $msgVars)
+  }
+  else {
+   $msgVars = $MyInvocation.MyCommand.name, $user.user_id, $user.username, $user.email, $user.displayname, $team.name
+   Write-Host ('{0},{1},{2},{3},{4},{5}' -f $msgVars) -Fore DarkMagenta
+   $sql = $insertTeamMemberTemplate -f $user.user_id, $team.id
    # if ($LaserficheFormsDatabase -match 'SANDBOX') { $sql = $sql.replace('SET', '--SET') }
    Write-Verbose ('{0}, sql: {1}' -f $MyInvocation.MyCommand.name, $sql)
    Write-Debug $MyInvocation.MyCommand.Name
@@ -79,33 +106,7 @@ function Add-Team {
   }
  }
 }
-function Add-TeamMember {
- begin {
-  $insertTeamMemberTemplate = Get-Content -Path .\sql\insert-team_member.txt -Raw
- }
- process {
-  $check = $_ | Get-TeamMember
-  $team = $_.SiteDescr | Get-Team
-  $user = $_.EmailWork | Get-LFUser
-  if (-not($check)) {
-   if ( -not($user) -or -not($team) ) {
-    $msgVars = $MyInvocation.MyCommand.name, $_.SiteDescr, $_.EmailWork, $team.name, $user.email
-    Write-Warning ('{0},{1},{2},Team [{3}] or user [{4}] not found' -f $msgVars)
-   }
-   else {
-    $msgVars = $MyInvocation.MyCommand.name, $user.user_id, $user.username, $user.email, $user.displayname, $team.name
-    Write-Host ('{0},{1},{2},{3},{4},{5}' -f $msgVars) -Fore DarkMagenta
-    $sql = $insertTeamMemberTemplate -f $user.user_id, $team.id
-    # if ($LaserficheFormsDatabase -match 'SANDBOX') { $sql = $sql.replace('SET', '--SET') }
-    Write-Verbose ('{0}, sql: {1}' -f $MyInvocation.MyCommand.name, $sql)
-    Write-Debug $MyInvocation.MyCommand.Name
-    if (-not$WhatIf) {
-     Invoke-Sqlcmd @lfFormsDBParams -Query $sql
-    }
-   }
-  }
- }
-}
+
 function Add-TeamMemberRoleMapping {
  begin {
   $insertTeamRoleMappingTemplate = Get-Content -Path .\sql\insert-team_member_team_role_mapping.txt -Raw
@@ -132,6 +133,7 @@ function Add-TeamMemberRoleMapping {
   }
  }
 }
+
 function Format-Sql ($sql, $vars) {
  process {
   if (Test-Path -Path $sql) {
@@ -144,6 +146,7 @@ function Format-Sql ($sql, $vars) {
   return
  }
 }
+
 function Get-EscapeUserByJobClass {
  begin {
   $escapeDBParams = @{
@@ -161,6 +164,7 @@ function Get-EscapeUserByJobClass {
   Invoke-Sqlcmd @escapeDBParams -query $sql
  }
 }
+
 function Get-LFUser {
  process {
   $sql = "select * from cf_users where email = '{0}'" -f $_
@@ -168,6 +172,7 @@ function Get-LFUser {
   Invoke-Sqlcmd @lfFormsDBParams -Query $sql
  }
 }
+
 function Get-TeamRole {
  process {
   $team = $_.SiteDescr | Get-Team
@@ -183,22 +188,21 @@ function Get-TeamRole {
   }
  }
 }
+
 function Get-Team {
  process {
-  if ($_) {
-   $sql = "select * from teams where name = `'{0}`'" -f $_
-   $result = Invoke-Sqlcmd @lfFormsDBParams -query $sql
-   if ($result) {
-    Write-Verbose ('{0},{1},Team Present' -f $MyInvocation.MyCommand.name, $_ )
-    $result
-   }
-   else {
-    Write-Warning ('{0},{1},Team NOT Present' -f $MyInvocation.MyCommand.name, $_ )
-    $_
-   }
+  if (-not$_) { return }
+  $sql = "select * from teams where name = '{0}'" -f $_
+  $result = Invoke-Sqlcmd @lfFormsDBParams -query $sql
+  if (-not$result) {
+   Write-Warning ('{0},{1},Team NOT Present' -f $MyInvocation.MyCommand.name, $_ )
+   return
   }
+  Write-Verbose ('{0},{1},Team Present' -f $MyInvocation.MyCommand.name, $_ )
+  $result
  }
 }
+
 function Get-TeamMember {
  process {
   $team = $_.SiteDescr | Get-Team
@@ -208,12 +212,13 @@ function Get-TeamMember {
    Write-Warning ('{0},{1},{2},Team [{3}] or user [{4}] not found' -f $msgVars)
   }
   else {
-   $sql = ("select * from team_members where (user_id = {0} and team_id = {1})" -f $user.user_id, $team.id)
+   $sql = ("select * from team_members where (user_group_id = {0} and team_id = {1})" -f $user.user_id, $team.id)
    Write-Verbose ('{0}, sql: {1}' -f $MyInvocation.MyCommand.name, $sql)
    Invoke-Sqlcmd @lfFormsDBParams -query $sql
   }
  }
 }
+
 function Get-TeamMemberRoleMapping {
  process {
   $teamRole = $_ | Get-TeamRole
@@ -229,12 +234,14 @@ function Get-TeamMemberRoleMapping {
   }
  }
 }
+
 function Invoke-LFSql ($sql) {
  process {
   if ($WhatIf) { Write-Verbose ('{0}, sql: {1}' -f $MyInvocation.MyCommand.name, $sql) }
   else { Invoke-SqlCmd @lfFormsDBParams -Query $sql }
  }
 }
+
 # ======================================================================
 . .\lib\Load-Module.ps1
 'SqlServer' | Load-Module
@@ -260,4 +267,3 @@ $sites | Add-Team
 $escUsers | Add-Role
 $escUsers | Add-TeamMember
 $escUsers | Add-TeamMemberRoleMapping
-# Get-TeamMembers
