@@ -243,8 +243,11 @@ function Invoke-LFSql ($sql) {
 }
 
 # ======================================================================
+. .\lib\Show-TestRun.ps1
 . .\lib\Load-Module.ps1
 'SqlServer' | Load-Module
+
+Show-TestRun
 
 $lfFormsDBParams = @{
  Server                 = $LaserficheFormsInstance
@@ -267,3 +270,5 @@ $sites | Add-Team
 $escUsers | Add-Role
 $escUsers | Add-TeamMember
 $escUsers | Add-TeamMemberRoleMapping
+
+Show-TestRun
