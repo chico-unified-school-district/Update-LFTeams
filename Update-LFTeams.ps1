@@ -147,9 +147,10 @@ function Format-Sql ($sql, $vars) {
 function Get-EscapeUserByJobClass {
  begin {
   $escapeDBParams = @{
-   Server     = $EscapeServer
-   Database   = $EscapeDatabase
-   Credential = $EscapeCredential
+   Server                 = $EscapeServer
+   Database               = $EscapeDatabase
+   Credential             = $EscapeCredential
+   TrustServerCertificate = $true
   }
  }
  process {
