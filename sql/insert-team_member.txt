@@ -6,7 +6,7 @@ SET IDENTITY_INSERT team_members ON;
 
 INSERT INTO team_members
 (
-  user_id
+  user_group_id
  ,team_id
  ,member_rights
  ,admin_rights
