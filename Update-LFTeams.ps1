@@ -73,7 +73,6 @@ function Add-Role {
  }
 }
 
-
 function Add-Team {
  begin {
   $insertTeamTemplate = Get-Content -Path .\sql\insert-team.txt -Raw
