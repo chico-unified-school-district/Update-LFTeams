@@ -54,7 +54,6 @@ function Add-Role {
  process {
   $teamRole = $_ | Get-TeamRole
   Write-Verbose ($teamRole | out-string)
-  pause
   if ($teamRole) { return } # Wait until team role entry added
   $team = $_.SiteDescr | Get-Team
   if (-not$team) { return } # Wait until team is added
