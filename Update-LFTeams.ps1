@@ -49,10 +49,12 @@ $update = 'Magenta'
 function Add-Role {
  begin {
   $insertRoleTemplate = Get-Content -Path .\sql\insert-role.txt -Raw
-  $checkTeamRoleTableBase = "SELECT * FROM team_roles WHERE team_id = {0} AND name = '{1}'"
+  $checkTeamRoleTableBase = "SELECT * FROM team_roles WHERE team_id = {0} AND name = '{1}' AND is_deleted = 0"
  }
  process {
   $teamRole = $_ | Get-TeamRole
+  Write-Verbose ($teamRole | out-string)
+  pause
   if ($teamRole) { return } # Wait until team role entry added
   $team = $_.SiteDescr | Get-Team
   if (-not$team) { return } # Wait until team is added
@@ -179,7 +181,7 @@ function Get-EscapeUserByJobClass {
 
 function Get-LFUser {
  process {
-  $sql = "select * from cf_users where email = '{0}'" -f $_
+  $sql = "SELECT * FROM cf_users WHERE email = '{0}' AND is_activated = 1;" -f $_
   Write-Verbose ('{0}, sql: {1}' -f $MyInvocation.MyCommand.name, $sql)
   Invoke-Sqlcmd @lfFormsDBParams -Query $sql
  }
@@ -194,7 +196,7 @@ function Get-TeamRole {
    Write-Verbose ('{0},{1},{2},team [{3}] or user [{4}] not found' -f $msgVars)
   }
   else {
-   $sql = ("select * from team_roles where (team_id = {0} and name = '{1}')" -f $team.id, $_.JobClassDescr)
+   $sql = ("SELECT * FROM team_roles WHERE (team_id = {0} AND name = '{1}') AND is_deleted = 0;" -f $team.id, $_.JobClassDescr)
    Write-Verbose ('{0}, sql: {1}' -f $MyInvocation.MyCommand.name, $sql)
    Invoke-Sqlcmd @lfFormsDBParams -query $sql
   }
@@ -204,7 +206,7 @@ function Get-TeamRole {
 function Get-Team {
  process {
   if (-not$_) { return }
-  $sql = "select * from teams where name = '{0}'" -f $_
+  $sql = "SELECT * FROM teams WHERE name = '{0}' AND is_deleted = 0;" -f $_
   $result = Invoke-Sqlcmd @lfFormsDBParams -query $sql
   if (-not$result) {
    Write-Verbose ('{0},{1},Team NOT Present' -f $MyInvocation.MyCommand.name, $_ )
@@ -224,7 +226,8 @@ function Get-TeamMember {
    Write-Verbose ('{0},{1},{2},Team [{3}] or user [{4}] not found' -f $msgVars)
   }
   else {
-   $sql = ("select * from team_members where (user_group_id = {0} and team_id = {1})" -f $user.user_id, $team.id)
+   # Consider including 'AND leave_date IS NULL' to filter for active members
+   $sql = ("select * from team_members where (user_group_id = {0} and team_id = {1}) AND leave_date IS NULL;" -f $user.user_id, $team.id)
    Write-Verbose ('{0}, sql: {1}' -f $MyInvocation.MyCommand.name, $sql)
    Invoke-Sqlcmd @lfFormsDBParams -query $sql
   }
@@ -234,12 +237,13 @@ function Get-TeamMember {
 function Get-TeamMemberRoleMapping {
  process {
   $teamRole = $_ | Get-TeamRole
-  $teamMember = $_ | Get-TeamMember
+  $teamMember = $_ | Get-TeamMember | Sort-Object -Property join_date -Descending
   if ( -not($teamRole) -or -not($teamMember) ) {
    $msgVars = $MyInvocation.MyCommand.name, $_.JobClassDescr, $_.EmailWork, $teamRole.id, $teamMember.id
    Write-Verbose ('{0},{1},{2},Missing team_role_id [{3}] or (team_member) id [{4}]' -f $msgVars)
   }
   else {
+   # The 'team_member_team_role_mapping' table only has 2 columns: team_member_id and team_role_id
    $sql = "select * from team_member_team_role_mapping where (team_role_id = {0} and team_member_id = {1});" -f $teamRole.id, $teamMember.id
    Write-Verbose ('{0}, sql: {1}' -f $MyInvocation.MyCommand.name, $sql)
    Invoke-Sqlcmd @lfFormsDBParams -query $sql
