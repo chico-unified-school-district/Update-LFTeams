@@ -16,8 +16,8 @@ INSERT INTO team_members
 )
 VALUES
 (
- {0}
- ,{1}
+ @userGroupId
+ ,@teamId
  ,1
  ,0
  ,CURRENT_TIMESTAMP

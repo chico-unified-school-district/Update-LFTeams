@@ -17,9 +17,9 @@ INSERT INTO team_roles
 VALUES
 (
  ((SELECT MAX(id) FROM team_roles) + 1)
- ,{0}
- ,'{1}'
- ,'{1}'
+ ,@teamId
+ ,@name
+ ,@name
  ,0
  ,CURRENT_TIMESTAMP
  ,49

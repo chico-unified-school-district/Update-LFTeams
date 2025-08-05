@@ -18,8 +18,8 @@ SET IDENTITY_INSERT teams ON;
  VALUES
  (
  ((SELECT MAX(id) FROM teams) + 1)
- ,'{0}'
- ,'{0}'
+ ,@name
+ ,@name
  ,CURRENT_TIMESTAMP
  ,0
  ,49
