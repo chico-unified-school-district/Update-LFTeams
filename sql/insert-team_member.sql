@@ -1,4 +1,5 @@
--- jcooper user_id is 45 and jcooper Created_by_snapshot_id 49.
+-- insert-team_member
+-- some_user user_id is 45 and some_user Created_by_snapshot_id 49.
 -- We need to turn identity_insert to on,
 -- and then off again when the operation is complete
 

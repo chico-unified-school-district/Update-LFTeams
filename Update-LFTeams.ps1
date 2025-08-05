@@ -49,27 +49,23 @@ $update = 'Magenta'
 function Add-Role ($params, $formsDB) {
  begin {
   $insertRoleSql = Get-Content -Path '.\sql\insert-role.sql' -Raw
-  $checkRoleSql = "SELECT * FROM team_roles WHERE team_id = @teamId AND name = @name AND is_deleted = 0"
+  if ($formsDB -match 'SANDBOX') { $insertRoleSql = $insertRoleSql.replace('SET', '--SET') }
+  $checkRoleSql = "SELECT * FROM team_roles WHERE (team_id = @teamId AND name = @name) AND is_deleted = 0"
  }
  process {
-  $teamRole = $_ | Get-TeamRole $params
-  Write-Verbose ($teamRole | out-string)
-  if ($teamRole) { return } # Wait until team role entry added
   $team = $_.SiteDescr | Get-Team $params
-  if (-not$team) { return } # Wait until team is added
+  if (!$team) { return } # Wait until team is added
 
-  Write-Host ('{0},[{1}],{2}' -f $MyInvocation.MyCommand.name, $_.JobClassDescr, $team.name) -F $get
-  $roleVars = "teamId=$team.id", "name=$($_.JobClassDescr)"
-  if ($formsDB -match 'SANDBOX') { $insertRoleSql = $insertRoleSql.replace('SET', '--SET') }
+  $sqlVars = "teamId=$($team.id)", "name=$($_.JobClassDescr)"
 
-  Write-Host ('{0},[{1}]' -f $MyInvocation.MyCommand.Name, $checkRoleSql) -f $get
-  $checkSql = New-SqlOperation @params -Query $checkRoleSql -Parameters $roleVars
+  Write-Verbose ('{0},Check Role,[{1}],[{2}],[{3}]' -f $MyInvocation.MyCommand.Name, $team.name , $checkRoleSql, ($sqlVars -join ',') )
+  $checkSql = New-SqlOperation @params -Query $checkRoleSql -Parameters $sqlVars
   if ($checkSql) { return }
 
-  Write-Host ('{0}, sql: [{1}]' -f $MyInvocation.MyCommand.name, $insertRoleSql, ($sqlVars -join ',')) -F $update
+  $msgVars = $MyInvocation.MyCommand.name, $team.name , $insertRoleSql, ($sqlVars -join ',')
+  Write-Host ('{0},Insert Role,[{1}],[{2}],[{3}]' -f $msgVars) -F $update
   if ($WhatIf) { return }
-  # Insert New team role
-  New-SqlOperation @params -Query $insertRoleSql -Parameters $roleVars
+  New-SqlOperation @params -Query $insertRoleSql -Parameters $sqlVars
  }
 }
 
@@ -142,7 +138,7 @@ function Get-EscapeUserByJobClass ($params) {
   Write-Host ('{0},{1}' -f $MyInvocation.MyCommand.name, $_) -Fore $get
   $job = $_
   $properties = 'EmailWork,JobClassDescr,EmploymentStatusIsActive,SiteId,SiteDescr'
-  $sql = "Select $properties from vwHREmploymentList where JobClassDescr like '%$job%' and EmploymentStatusIsActive = 1"
+  $sql = "SELECT $properties from vwHREmploymentList where JobClassDescr like '%$job%' and EmploymentStatusIsActive = 1"
   New-SqlOperation @params -query $sql
  }
 }
@@ -160,11 +156,11 @@ function Get-TeamRole ($params) {
  process {
   $team = $_.SiteDescr | Get-Team $params
   $user = $_.EmailWork | Get-LFUser $params
-  if ((-not($team)) -or (-not($user))) {
+  if (!$team -or !$user) {
    $msgVars = $MyInvocation.MyCommand.name, $_.SiteDescr, $_.EmailWork, $team.name, $user.email
    return (Write-Verbose ('{0},{1},{2},team [{3}] or user [{4}] not found' -f $msgVars))
   }
-  $sql = "Select-Object * FROM team_roles WHERE (team_id = @teamId AND name = @name) AND is_deleted = 0;"
+  $sql = "SELECT * FROM team_roles WHERE (team_id = @teamId AND name = @name) AND is_deleted = 0;"
   $sqlVars = "teamId=$($team.id)", "name=$($_.JobClassDescr)"
   Write-Verbose ('{0}, sql: [{1}],[{2}]' -f $MyInvocation.MyCommand.name, $sql, ($sqlVars -join ','))
   New-SqlOperation @params -query $sql -Parameters $sqlVars
@@ -175,12 +171,12 @@ function Get-Team ($params) {
  process {
   $teamName = $_
   if (!$teamName) { return }
-  $sql = "Select * FROM teams WHERE name = @name AND is_deleted = 0;"
+  $sql = "SELECT * FROM teams WHERE name = @name AND is_deleted = 0;"
   $sqlVars = "name=$teamName"
   $result = New-SqlOperation @params -query $sql -Parameters $sqlVars
   if (!$result) { return (Write-Verbose ('{0},{1},Team NOT Present' -f $MyInvocation.MyCommand.name, $_ )) }
   Write-Verbose ('{0},{1},Team Present' -f $MyInvocation.MyCommand.name, $_ )
-  $result
+  $result | ConvertTo-Csv | ConvertFrom-Csv
  }
 }
 
@@ -193,7 +189,7 @@ function Get-TeamMember ($params) {
    return (Write-Verbose ('{0},{1},{2},Team [{3}] or user [{4}] not found' -f $msgVars))
   }
   # Including 'AND leave_date IS NULL' to filter for active members
-  $sql = "Select-Object * from team_members where (user_group_id = @userGroupId and team_id = @teamId) AND leave_date IS NULL;"
+  $sql = "SELECT * from team_members where (user_group_id = @userGroupId and team_id = @teamId) AND leave_date IS NULL;"
   $sqlVars = "userGroupId=$($user.user_id)", "teamId=$($team.id)"
   Write-Verbose ('{0}, sql: [{1}],[{2}]' -f $MyInvocation.MyCommand.name, $sql, ($sqlVars -join ','))
   New-SqlOperation @params -query $sql -Parameters $sqlVars
@@ -209,7 +205,7 @@ function Get-TeamMemberRoleMapping ($params) {
    return (Write-Verbose ('{0},{1},{2},Missing team_role_id [{3}] or (team_member) id [{4}]' -f $msgVars))
   }
   # The 'team_member_team_role_mapping' table only has 2 columns: team_member_id and team_role_id
-  $sql = "Select-Object * from team_member_team_role_mapping where (team_role_id = @teamRoleId and team_member_id = @teamMemberId);"
+  $sql = "SELECT * from team_member_team_role_mapping where (team_role_id = @teamRoleId and team_member_id = @teamMemberId);"
   $sqlVars = "teamRoleId=$($teamRole.id)", "teamMemberId=$($teamMember.id)"
   Write-Verbose ('{0}, sql: [{1}],[{2}]' -f $MyInvocation.MyCommand.name, $sql, ($sqlVars -join ','))
   New-SqlOperation @params -query $sql -Parameters $sqlVars
@@ -237,14 +233,19 @@ $empDBParams = @{
 # !!! so test each class in your SQL env first before adding a new one !!!
 
 $employeeData = $JobClasses | Get-EscapeUserByJobClass $empDBParams
-# $employeeData
 
 $sites = $employeeData.SiteDescr | Select-Object -Unique
-# $sites | Get-Team
 
-# $sites | Add-Team $lfFormsDBParams
-# $employeeData | Add-Role $lfFormsDBParams $LaserficheFormsDatabase
-# $employeeData | Add-TeamMember $lfFormsDBParams
+Show-BlockInfo 'Add teams'
+$sites | Add-Team $lfFormsDBParams
+
+Show-BlockInfo 'Add roles'
+$employeeData | Add-Role $lfFormsDBParams $LaserficheFormsDatabase
+
+Show-BlockInfo 'Add team members'
+$employeeData | Add-TeamMember $lfFormsDBParams
+
+Show-BlockInfo 'Assign roles to team members'
 $employeeData | Add-TeamMemberRoleMapping $lfFormsDBParams
 
 Show-BlockInfo end
